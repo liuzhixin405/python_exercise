@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理员登录 - 管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-100">
+    <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-md w-full space-y-8">
+            <div>
+                <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                    管理员登录
+                </h2>
+                <p class="mt-2 text-center text-sm text-gray-600">
+                    登录到管理后台
+                </p>
+            </div>
+
+            <!-- 消息提示 -->
+            <div id="message-container" class="hidden">
+                <div id="message-content" class="p-4 rounded-lg"></div>
+            </div>
+
+            <form id="loginForm" class="mt-8 space-y-6">
+                <div class="rounded-md shadow-sm -space-y-px">
+                    <div class="mb-4">
+                        <label for="username" class="block text-sm font-medium text-gray-700 mb-2">用户名</label>
+                        <input id="username" name="username" type="text" required
+                               class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                               placeholder="请输入用户名">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="password" class="block text-sm font-medium text-gray-700 mb-2">密码</label>
+                        <input id="password" name="password" type="password" required
+                               class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                               placeholder="请输入密码">
+                    </div>
+                </div>
+
+                <div>
+                    <button type="submit" id="loginBtn"
+                            class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                            <i class="fas fa-sign-in-alt"></i>
+                        </span>
+                        <span id="loginBtnText">登录</span>
+                    </button>
+                </div>
+
+                <div class="text-center">
+                    <p class="text-sm text-gray-600">
+                        还没有账户？
+                        <a href="{{ url_for('auth.admin_register') }}" class="font-medium text-blue-600 hover:text-blue-500">
+                            立即注册
+                        </a>
+                    </p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const loginBtn = document.getElementById('loginBtn');
+            const loginBtnText = document.getElementById('loginBtnText');
+            const messageContainer = document.getElementById('message-container');
+            const messageContent = document.getElementById('message-content');
+            
+            // 显示加载状态
+            loginBtn.disabled = true;
+            loginBtnText.textContent = '登录中...';
+            
+            try {
+                const response = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 登录成功
+                    showMessage(data.message, 'success');
+                    // 延迟跳转到管理后台
+                    setTimeout(() => {
+                        window.location.href = '/admin';
+                    }, 1000);
+                } else {
+                    // 登录失败
+                    showMessage(data.message, 'error');
+                }
+            } catch (error) {
+                showMessage('网络错误，请稍后重试', 'error');
+            } finally {
+                // 恢复按钮状态
+                loginBtn.disabled = false;
+                loginBtnText.textContent = '登录';
+            }
+        });
+        
+        function showMessage(message, type) {
+            const messageContainer = document.getElementById('message-container');
+            const messageContent = document.getElementById('message-content');
+            
+            messageContent.textContent = message;
+            messageContent.className = `p-4 rounded-lg ${type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`;
+            messageContainer.classList.remove('hidden');
+            
+            // 3秒后自动隐藏
+            setTimeout(() => {
+                messageContainer.classList.add('hidden');
+            }, 3000);
+        }
+    </script>
+</body>
+</html> 

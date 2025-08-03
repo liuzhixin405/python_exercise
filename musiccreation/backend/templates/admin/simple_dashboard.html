@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>仪表板 - 管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-100">
+    <div class="min-h-screen">
+        <!-- 导航栏 -->
+        <nav class="bg-white shadow-lg">
+            <div class="max-w-7xl mx-auto px-4">
+                <div class="flex justify-between h-16">
+                    <div class="flex items-center">
+                        <h1 class="text-xl font-semibold text-gray-800">音乐新闻管理系统</h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm text-gray-600">欢迎，{{ session.admin_user.username }}</span>
+                        <a href="{{ url_for('auth.admin_logout') }}" class="text-sm text-red-600 hover:text-red-800">退出登录</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 消息提示 -->
+        <div id="message-container" class="hidden max-w-7xl mx-auto px-4 py-2">
+            <div id="message-content" class="mb-4 p-4 rounded-lg"></div>
+        </div>
+
+        <!-- 主要内容区域 -->
+        <div class="flex">
+            <!-- 侧边栏 -->
+            <aside class="w-64 bg-white shadow-lg min-h-screen">
+                <nav class="mt-8">
+                    <div class="px-4 space-y-2">
+                        <a href="{{ url_for('dashboard.admin_dashboard') }}" 
+                           class="block px-4 py-2 bg-blue-50 text-blue-600 rounded-lg">
+                            <i class="fas fa-tachometer-alt mr-3"></i>仪表板
+                        </a>
+                        <a href="{{ url_for('users.admin_users') }}" 
+                           class="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg">
+                            <i class="fas fa-users mr-3"></i>用户管理
+                        </a>
+                        <a href="{{ url_for('news.admin_news') }}" 
+                           class="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg">
+                            <i class="fas fa-newspaper mr-3"></i>新闻管理
+                        </a>
+                    </div>
+                </nav>
+            </aside>
+
+            <!-- 主内容区 -->
+            <main class="flex-1 p-8">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6">系统概览</h2>
+                    
+                    <!-- 加载状态 -->
+                    <div id="loading" class="text-center py-8">
+                        <i class="fas fa-spinner fa-spin text-2xl text-gray-400"></i>
+                        <p class="mt-2 text-gray-500">加载统计数据中...</p>
+                    </div>
+
+                    <!-- 统计卡片 -->
+                    <div id="stats-container" class="hidden">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                            <div class="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-lg text-white">
+                                <div class="flex items-center">
+                                    <div class="p-3 rounded-full bg-white bg-opacity-20">
+                                        <i class="fas fa-users text-2xl"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <p class="text-sm opacity-90">总用户数</p>
+                                        <p id="total-users" class="text-3xl font-bold">-</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gradient-to-r from-green-500 to-green-600 p-6 rounded-lg text-white">
+                                <div class="flex items-center">
+                                    <div class="p-3 rounded-full bg-white bg-opacity-20">
+                                        <i class="fas fa-newspaper text-2xl"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <p class="text-sm opacity-90">总新闻数</p>
+                                        <p id="total-news" class="text-3xl font-bold">-</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gradient-to-r from-purple-500 to-purple-600 p-6 rounded-lg text-white">
+                                <div class="flex items-center">
+                                    <div class="p-3 rounded-full bg-white bg-opacity-20">
+                                        <i class="fas fa-user-shield text-2xl"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <p class="text-sm opacity-90">管理员数</p>
+                                        <p id="admin-users" class="text-3xl font-bold">-</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gradient-to-r from-orange-500 to-orange-600 p-6 rounded-lg text-white">
+                                <div class="flex items-center">
+                                    <div class="p-3 rounded-full bg-white bg-opacity-20">
+                                        <i class="fas fa-clock text-2xl"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <p class="text-sm opacity-90">本周新闻</p>
+                                        <p id="recent-news" class="text-3xl font-bold">-</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 快速操作 -->
+                    <div class="bg-gray-50 rounded-lg p-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">快速操作</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <a href="{{ url_for('users.admin_users') }}" 
+                               class="flex items-center p-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                                <div class="p-3 bg-blue-100 rounded-lg">
+                                    <i class="fas fa-users text-blue-600 text-xl"></i>
+                                </div>
+                                <div class="ml-4">
+                                    <h4 class="font-medium text-gray-900">用户管理</h4>
+                                    <p class="text-sm text-gray-500">查看和管理用户账户</p>
+                                </div>
+                            </a>
+                            
+                            <a href="{{ url_for('news.admin_news') }}" 
+                               class="flex items-center p-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                                <div class="p-3 bg-green-100 rounded-lg">
+                                    <i class="fas fa-newspaper text-green-600 text-xl"></i>
+                                </div>
+                                <div class="ml-4">
+                                    <h4 class="font-medium text-gray-900">新闻管理</h4>
+                                    <p class="text-sm text-gray-500">创建和编辑新闻内容</p>
+                                </div>
+                            </a>
+                            
+                            <a href="{{ url_for('news.create_news') }}" 
+                               class="flex items-center p-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                                <div class="p-3 bg-purple-100 rounded-lg">
+                                    <i class="fas fa-plus text-purple-600 text-xl"></i>
+                                </div>
+                                <div class="ml-4">
+                                    <h4 class="font-medium text-gray-900">添加新闻</h4>
+                                    <p class="text-sm text-gray-500">创建新的新闻文章</p>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // 页面加载时获取统计数据
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStats();
+        });
+
+        // 加载统计数据
+        async function loadStats() {
+            const loading = document.getElementById('loading');
+            const statsContainer = document.getElementById('stats-container');
+
+            try {
+                const response = await fetch('/api/admin/stats');
+                const data = await response.json();
+
+                if (data.success) {
+                    // 更新统计数据
+                    document.getElementById('total-users').textContent = data.stats.total_users;
+                    document.getElementById('total-news').textContent = data.stats.total_news;
+                    document.getElementById('admin-users').textContent = data.stats.admin_users;
+                    document.getElementById('recent-news').textContent = data.stats.recent_news;
+                    
+                    // 隐藏加载状态，显示统计数据
+                    loading.classList.add('hidden');
+                    statsContainer.classList.remove('hidden');
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            } catch (error) {
+                showMessage('加载统计数据失败', 'error');
+            }
+        }
+
+        // 显示消息
+        function showMessage(message, type) {
+            const messageContainer = document.getElementById('message-container');
+            const messageContent = document.getElementById('message-content');
+            
+            messageContent.textContent = message;
+            messageContent.className = `mb-4 p-4 rounded-lg ${type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`;
+            messageContainer.classList.remove('hidden');
+            
+            // 3秒后自动隐藏
+            setTimeout(() => {
+                messageContainer.classList.add('hidden');
+            }, 3000);
+        }
+    </script>
+</body>
+</html> 
