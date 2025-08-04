@@ -1,27 +1,151 @@
 version: '3.8'
 
 services:
+  # MySQL 数据库服务
+  mysql:
+    image: mysql:8.0
+    container_name: musiccreation_mysql
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: musiccreation
+      MYSQL_USER: musicuser
+      MYSQL_PASSWORD: musicpass
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+    networks:
+      - musiccreation_network
+
+  # Redis 缓存服务
+  redis:
+    image: redis:7-alpine
+    container_name: musiccreation_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - musiccreation_network
+
+  # 后端服务
   backend:
-    build: ./backend
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: musiccreation_backend
     ports:
       - "5000:5000"
     volumes:
+      - ./backend:/app
       - ./backend/uploads:/app/uploads
+      - ./backend/logs:/app/logs
     environment:
       - FLASK_ENV=production
-      - SECRET_KEY=your-production-secret-key
-      - JWT_SECRET_KEY=your-production-jwt-secret
+      - FLASK_APP=app.py
+      - SECRET_KEY=your-production-secret-key-change-this
+      - JWT_SECRET_KEY=your-production-jwt-secret-change-this
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=musicuser
+      - MYSQL_PASSWORD=musicpass
+      - MYSQL_DATABASE=musiccreation
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - UPLOAD_FOLDER=/app/uploads
+      - MAX_CONTENT_LENGTH=16777216
+    depends_on:
+      - mysql
+      - redis
     restart: unless-stopped
+    networks:
+      - musiccreation_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
+  # 前端服务
   frontend:
-    build: ./frontend
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: musiccreation_frontend
     ports:
       - "3000:3000"
-    depends_on:
-      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     environment:
       - REACT_APP_API_URL=http://localhost:5000/api
+      - REACT_APP_ADMIN_URL=http://localhost:5000/admin
+      - NODE_ENV=production
+    depends_on:
+      - backend
     restart: unless-stopped
+    networks:
+      - musiccreation_network
+
+  # Nginx 反向代理服务
+  nginx:
+    image: nginx:alpine
+    container_name: musiccreation_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+      - ./backend/uploads:/var/www/uploads
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+    networks:
+      - musiccreation_network
+
+  # 管理后台服务
+  admin:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile.admin
+    container_name: musiccreation_admin
+    ports:
+      - "5001:5000"
+    volumes:
+      - ./backend:/app
+      - ./backend/uploads:/app/uploads
+      - ./backend/logs:/app/logs
+    environment:
+      - FLASK_ENV=production
+      - FLASK_APP=admin.py
+      - SECRET_KEY=your-admin-secret-key-change-this
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=musicuser
+      - MYSQL_PASSWORD=musicpass
+      - MYSQL_DATABASE=musiccreation
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - mysql
+      - redis
+    restart: unless-stopped
+    networks:
+      - musiccreation_network
 
 volumes:
-  uploads: 
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+  uploads:
+    driver: local
+
+networks:
+  musiccreation_network:
+    driver: bridge 

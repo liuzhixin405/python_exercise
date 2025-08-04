@@ -15,8 +15,8 @@ COPY requirements.txt .
 # 安装 Python 依赖
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 复制应用代码
-COPY . .
+# 安装 Flask CLI 用于开发
+RUN pip install flask
 
 # 创建必要的目录
 RUN mkdir -p /app/uploads /app/logs
@@ -24,14 +24,11 @@ RUN mkdir -p /app/uploads /app/logs
 # 设置环境变量
 ENV PYTHONPATH=/app
 ENV FLASK_APP=app.py
-ENV FLASK_ENV=production
+ENV FLASK_ENV=development
+ENV FLASK_DEBUG=1
 
 # 暴露端口
 EXPOSE 5000
 
-# 健康检查
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:5000/api/health || exit 1
-
-# 启动命令
-CMD ["python", "app.py"] 
+# 启动命令（开发模式）
+CMD ["python", "-m", "flask", "run", "--host=0.0.0.0", "--port=5000", "--reload"] 

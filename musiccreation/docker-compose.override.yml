@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # 开发环境的后端服务配置
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./backend:/app
+      - ./backend/uploads:/app/uploads
+      - ./backend/logs:/app/logs
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - PYTHONPATH=/app
+    ports:
+      - "5000:5000"
+    command: ["python", "-m", "flask", "run", "--host=0.0.0.0", "--port=5000", "--reload"]
+
+  # 开发环境的前端服务配置
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - REACT_APP_API_URL=http://localhost:5000/api
+      - REACT_APP_ADMIN_URL=http://localhost:5000/admin
+    ports:
+      - "3000:3000"
+    command: ["npm", "start"]
+
+  # 开发环境的管理后台服务配置
+  admin:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile.admin.dev
+    volumes:
+      - ./backend:/app
+      - ./backend/uploads:/app/uploads
+      - ./backend/logs:/app/logs
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - PYTHONPATH=/app
+    ports:
+      - "5001:5000"
+    command: ["python", "-m", "flask", "run", "--host=0.0.0.0", "--port=5000", "--reload"]
+
+  # 开发环境不启动 Nginx
+  nginx:
+    profiles:
+      - production 
