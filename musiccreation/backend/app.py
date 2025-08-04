@@ -620,7 +620,7 @@ def register():
         
         # 检查邮箱是否已存在
         if check_email_exists(email):
-            return jsonify({'error': '邮箱已被注册'}), 400
+                return jsonify({'error': '邮箱已被注册'}), 400
         
         # 创建新用户
         user_id = create_user(username, email, bcrypt.generate_password_hash(password).decode('utf-8'))
@@ -739,7 +739,7 @@ def update_profile():
             if new_email and '@' in new_email:
                 # 检查邮箱是否已被其他用户使用
                 if check_email_exists(new_email) and new_email != user['email']:
-                    return jsonify({'error': '邮箱已被其他用户使用'}), 400
+                        return jsonify({'error': '邮箱已被其他用户使用'}), 400
                 user['email'] = new_email
         
         # 更新密码
@@ -767,6 +767,7 @@ def update_profile():
                     WHERE id = %s
                 """, (user['email'], user['password_hash'], user['real_name'], user_id))
                 connection.commit()
+                
             return jsonify({
                 'message': '资料更新成功',
                 'user': {
@@ -850,18 +851,21 @@ def get_user_news():
                 # 获取总数
                 cursor.execute("SELECT COUNT(*) as count FROM news WHERE author_id = %s", (user_id,))
                 total_count = cursor.fetchone()['count']
-                
+        
                 total_pages = (total_count + per_page - 1) // per_page
-                
-                return jsonify({
-                    'news': user_news,
-                    'pagination': {
-                        'current_page': page,
-                        'per_page': per_page,
-                        'total_pages': total_pages,
-                        'total_items': total_count
-                    }
-                }), 200
+        
+            return jsonify({
+                'news': user_news,
+                'pagination': {
+                    'current_page': page,
+                    'per_page': per_page,
+                    'total_pages': total_pages,
+                    'total_items': total_count
+                }
+            }), 200
+        except Exception as e:
+            print(f"获取用户新闻失败: {e}")
+            return jsonify({'error': f'获取用户新闻失败: {str(e)}'}), 500
         finally:
             connection.close()
         
