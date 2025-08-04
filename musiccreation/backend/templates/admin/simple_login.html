@@ -54,7 +54,7 @@
                 <div class="text-center">
                     <p class="text-sm text-gray-600">
                         还没有账户？
-                        <a href="{{ url_for('auth.admin_register') }}" class="font-medium text-blue-600 hover:text-blue-500">
+                        <a href="{{ url_for('admin_register_page') }}" class="font-medium text-blue-600 hover:text-blue-500">
                             立即注册
                         </a>
                     </p>
@@ -92,16 +92,19 @@
                 
                 const data = await response.json();
                 
-                if (data.success) {
-                    // 登录成功
+                if (response.ok) {
+                    // 登录成功，保存token
+                    if (data.access_token) {
+                        localStorage.setItem('admin_token', data.access_token);
+                    }
                     showMessage(data.message, 'success');
                     // 延迟跳转到管理后台
                     setTimeout(() => {
-                        window.location.href = '/admin';
+                        window.location.href = '/admin/dashboard';
                     }, 1000);
                 } else {
                     // 登录失败
-                    showMessage(data.message, 'error');
+                    showMessage(data.error || data.message || '登录失败', 'error');
                 }
             } catch (error) {
                 showMessage('网络错误，请稍后重试', 'error');

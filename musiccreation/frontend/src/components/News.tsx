@@ -22,8 +22,9 @@ const News: React.FC<NewsProps> = ({ isLoggedIn, currentUser }) => {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [displayCount, setDisplayCount] = useState(6);
+  const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState({
     title: '',
@@ -87,6 +88,54 @@ const News: React.FC<NewsProps> = ({ isLoggedIn, currentUser }) => {
     fetchNews();
   }, [isLoggedIn]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 无限滚动监听器
+  useEffect(() => {
+    const handleScroll = () => {
+      if (isLoadingMore || !hasMore) return;
+      
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const windowHeight = window.innerHeight;
+      const documentHeight = document.documentElement.scrollHeight;
+      
+      // 当滚动到距离底部100px时加载更多
+      if (scrollTop + windowHeight >= documentHeight - 100) {
+        loadMoreNews();
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isLoadingMore, hasMore, currentPage, news.length]);
+
+  const loadMoreNews = async () => {
+    if (isLoadingMore || !hasMore) return;
+    
+    setIsLoadingMore(true);
+    try {
+      const nextPage = currentPage + 1;
+      const response = await fetch(`http://localhost:5000/api/news?page=${nextPage}&per_page=6`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        const newNews = data.news || [];
+        
+        if (newNews.length > 0) {
+          setNews(prev => [...prev, ...newNews]);
+          setCurrentPage(nextPage);
+        } else {
+          setHasMore(false);
+        }
+      } else {
+        setHasMore(false);
+      }
+    } catch (error) {
+      console.error('Error loading more news:', error);
+      setHasMore(false);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
   const handleCreateNews = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createForm.title || !createForm.description || !createForm.image_url) {
@@ -130,12 +179,20 @@ const News: React.FC<NewsProps> = ({ isLoggedIn, currentUser }) => {
     }
   };
 
-  const handleDeleteNews = async (newsId: number) => {
-    if (!window.confirm('确定要删除这条新闻吗？')) return;
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteNewsId, setDeleteNewsId] = useState<number | null>(null);
 
+  const handleDeleteClick = (newsId: number) => {
+    setDeleteNewsId(newsId);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteNewsId) return;
+    
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/news/${newsId}`, {
+      const response = await fetch(`http://localhost:5000/api/news/${deleteNewsId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -152,17 +209,25 @@ const News: React.FC<NewsProps> = ({ isLoggedIn, currentUser }) => {
     } catch (error) {
       console.error('Error deleting news:', error);
       showToast('删除失败，请检查网络连接', 'error');
+    } finally {
+      setShowDeleteConfirm(false);
+      setDeleteNewsId(null);
     }
   };
 
-  const handleShowMore = () => {
-    setDisplayCount(prev => prev + 3);
-    if (displayCount + 3 >= news.length) {
-      setHasMore(false);
-    }
+  const handleDeleteCancel = () => {
+    setShowDeleteConfirm(false);
+    setDeleteNewsId(null);
   };
 
-  const displayedNews = news.slice(0, displayCount);
+  const handleDeleteNews = async (newsId: number) => {
+    // 这个方法现在被 handleDeleteClick 替代
+    handleDeleteClick(newsId);
+  };
+
+
+
+
 
   const ImageWithFallback: React.FC<{ src: string; alt: string; className?: string }> = ({ src, alt, className }) => {
     const [imgSrc, setImgSrc] = useState(src);
@@ -213,7 +278,32 @@ const News: React.FC<NewsProps> = ({ isLoggedIn, currentUser }) => {
   }
 
   return (
-    <section className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-20">
+    <>
+      {/* 确认删除对话框 */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">确认删除</h3>
+            <p className="text-gray-600 mb-6">确定要删除这条新闻吗？此操作无法撤销。</p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={handleDeleteCancel}
+                className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+              >
+                确定删除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <section className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -275,7 +365,7 @@ const News: React.FC<NewsProps> = ({ isLoggedIn, currentUser }) => {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
-          {displayedNews.map((item, index) => (
+          {news.map((item, index) => (
             <motion.div
               key={item.id}
               initial={{ opacity: 0, y: 20 }}
@@ -295,7 +385,7 @@ const News: React.FC<NewsProps> = ({ isLoggedIn, currentUser }) => {
                 {isLoggedIn && currentUser && item.author === currentUser && (
                   <div className="absolute top-2 right-2 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     <button
-                      onClick={() => handleDeleteNews(item.id)}
+                      onClick={() => handleDeleteClick(item.id)}
                       className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg transition-colors"
                       title="删除"
                     >
@@ -329,19 +419,16 @@ const News: React.FC<NewsProps> = ({ isLoggedIn, currentUser }) => {
           ))}
         </div>
 
-        {hasMore && news.length > displayCount && (
+        {isLoadingMore && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-center"
+            className="text-center py-8"
           >
-            <button
-              onClick={handleShowMore}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium py-3 px-8 rounded-xl transition-all duration-200 inline-flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-            >
-              <Plus size={20} />
-              <span>显示更多</span>
-            </button>
+            <div className="flex items-center justify-center space-x-2">
+              <Loader2 className="animate-spin h-6 w-6 text-blue-600" />
+              <span className="text-gray-600">加载更多...</span>
+            </div>
           </motion.div>
         )}
 
@@ -450,6 +537,7 @@ const News: React.FC<NewsProps> = ({ isLoggedIn, currentUser }) => {
         onClose={hideToast}
       />
     </section>
+    </>
   );
 };
 

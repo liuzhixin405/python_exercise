@@ -17,8 +17,8 @@
                         <h1 class="text-xl font-semibold text-gray-800">音乐新闻管理系统</h1>
                     </div>
                     <div class="flex items-center space-x-4">
-                        <span class="text-sm text-gray-600">欢迎，{{ session.admin_user.username }}</span>
-                        <a href="{{ url_for('auth.admin_logout') }}" class="text-sm text-red-600 hover:text-red-800">退出登录</a>
+                        <span class="text-sm text-gray-600">欢迎，<span id="admin-username">管理员</span></span>
+                        <a href="{{ url_for('admin_logout_page') }}" class="text-sm text-red-600 hover:text-red-800">退出登录</a>
                     </div>
                 </div>
             </div>
@@ -35,15 +35,15 @@
             <aside class="w-64 bg-white shadow-lg min-h-screen">
                 <nav class="mt-8">
                     <div class="px-4 space-y-2">
-                        <a href="{{ url_for('dashboard.admin_dashboard') }}" 
+                        <a href="{{ url_for('admin_dashboard_page') }}" 
                            class="block px-4 py-2 bg-blue-50 text-blue-600 rounded-lg">
                             <i class="fas fa-tachometer-alt mr-3"></i>仪表板
                         </a>
-                        <a href="{{ url_for('users.admin_users') }}" 
+                        <a href="{{ url_for('admin_users_page') }}" 
                            class="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg">
                             <i class="fas fa-users mr-3"></i>用户管理
                         </a>
-                        <a href="{{ url_for('news.admin_news') }}" 
+                        <a href="{{ url_for('admin_news_page') }}" 
                            class="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg">
                             <i class="fas fa-newspaper mr-3"></i>新闻管理
                         </a>
@@ -119,7 +119,7 @@
                     <div class="bg-gray-50 rounded-lg p-6">
                         <h3 class="text-lg font-semibold text-gray-800 mb-4">快速操作</h3>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <a href="{{ url_for('users.admin_users') }}" 
+                            <a href="{{ url_for('admin_users_page') }}" 
                                class="flex items-center p-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
                                 <div class="p-3 bg-blue-100 rounded-lg">
                                     <i class="fas fa-users text-blue-600 text-xl"></i>
@@ -130,7 +130,7 @@
                                 </div>
                             </a>
                             
-                            <a href="{{ url_for('news.admin_news') }}" 
+                            <a href="{{ url_for('admin_news_page') }}" 
                                class="flex items-center p-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
                                 <div class="p-3 bg-green-100 rounded-lg">
                                     <i class="fas fa-newspaper text-green-600 text-xl"></i>
@@ -141,7 +141,7 @@
                                 </div>
                             </a>
                             
-                            <a href="{{ url_for('news.create_news') }}" 
+                            <a href="{{ url_for('admin_create_news_page') }}" 
                                class="flex items-center p-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
                                 <div class="p-3 bg-purple-100 rounded-lg">
                                     <i class="fas fa-plus text-purple-600 text-xl"></i>
@@ -162,7 +162,39 @@
         // 页面加载时获取统计数据
         document.addEventListener('DOMContentLoaded', function() {
             loadStats();
+            loadUserInfo();
         });
+
+        // 获取用户信息
+        async function loadUserInfo() {
+            try {
+                const token = localStorage.getItem('admin_token');
+                if (!token) {
+                    // 如果没有token，重定向到登录页面
+                    window.location.href = '/admin/login';
+                    return;
+                }
+
+                const response = await fetch('/api/test-token', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('admin-username').textContent = data.username || '管理员';
+                } else {
+                    // Token无效，重定向到登录页面
+                    localStorage.removeItem('admin_token');
+                    window.location.href = '/admin/login';
+                }
+            } catch (error) {
+                console.error('Error loading user info:', error);
+                localStorage.removeItem('admin_token');
+                window.location.href = '/admin/login';
+            }
+        }
 
         // 加载统计数据
         async function loadStats() {
@@ -170,10 +202,20 @@
             const statsContainer = document.getElementById('stats-container');
 
             try {
-                const response = await fetch('/api/admin/stats');
+                const token = localStorage.getItem('admin_token');
+                if (!token) {
+                    showMessage('请先登录', 'error');
+                    return;
+                }
+
+                const response = await fetch('/api/admin/stats', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
                 const data = await response.json();
 
-                if (data.success) {
+                if (response.ok) {
                     // 更新统计数据
                     document.getElementById('total-users').textContent = data.stats.total_users;
                     document.getElementById('total-news').textContent = data.stats.total_news;
@@ -184,7 +226,7 @@
                     loading.classList.add('hidden');
                     statsContainer.classList.remove('hidden');
                 } else {
-                    showMessage(data.message, 'error');
+                    showMessage(data.error || '加载统计数据失败', 'error');
                 }
             } catch (error) {
                 showMessage('加载统计数据失败', 'error');

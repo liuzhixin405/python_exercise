@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>退出登录 - 音乐新闻管理系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div class="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
+        <div class="text-center">
+            <i class="fas fa-sign-out-alt text-4xl text-gray-400 mb-4"></i>
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">正在退出登录...</h1>
+            <p class="text-gray-600 mb-6">请稍候，正在清理您的登录状态</p>
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+        </div>
+    </div>
+
+    <script>
+        // 页面加载时执行登出操作
+        document.addEventListener('DOMContentLoaded', function() {
+            // 清除localStorage中的token
+            localStorage.removeItem('admin_token');
+            
+            // 延迟跳转到登录页面
+            setTimeout(() => {
+                window.location.href = '/admin/login';
+            }, 1500);
+        });
+    </script>
+</body>
+</html> 

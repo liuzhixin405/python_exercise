@@ -120,7 +120,7 @@ const Navbar: React.FC<NavbarProps> = ({
   };
 
   const handleAdminClick = () => {
-    window.open('http://localhost:5001', '_blank');
+    window.open('http://localhost:5001/admin/login', '_blank');
   };
 
   const handleLogout = () => {

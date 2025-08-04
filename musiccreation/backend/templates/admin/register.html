@@ -68,7 +68,7 @@
                 <div class="text-center">
                     <p class="text-sm text-gray-600">
                         已有账户？
-                        <a href="{{ url_for('auth.admin_login') }}" class="font-medium text-blue-600 hover:text-blue-500">
+                        <a href="{{ url_for('admin_login_page') }}" class="font-medium text-blue-600 hover:text-blue-500">
                             立即登录
                         </a>
                     </p>
@@ -113,7 +113,7 @@
                 
                 const data = await response.json();
                 
-                if (data.success) {
+                if (response.ok) {
                     // 注册成功
                     showMessage(data.message, 'success');
                     // 延迟跳转到登录页面
@@ -122,7 +122,7 @@
                     }, 1500);
                 } else {
                     // 注册失败
-                    showMessage(data.message, 'error');
+                    showMessage(data.error || data.message || '注册失败', 'error');
                 }
             } catch (error) {
                 showMessage('网络错误，请稍后重试', 'error');

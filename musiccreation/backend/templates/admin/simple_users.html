@@ -17,8 +17,8 @@
                         <h1 class="text-xl font-semibold text-gray-800">音乐新闻管理系统</h1>
                     </div>
                     <div class="flex items-center space-x-4">
-                        <span class="text-sm text-gray-600">欢迎，{{ session.admin_user.username }}</span>
-                        <a href="{{ url_for('auth.admin_logout') }}" class="text-sm text-red-600 hover:text-red-800">退出登录</a>
+                        <span class="text-sm text-gray-600">欢迎，<span id="admin-username">管理员</span></span>
+                        <a href="{{ url_for('admin_logout_page') }}" class="text-sm text-red-600 hover:text-red-800">退出登录</a>
                     </div>
                 </div>
             </div>
@@ -35,15 +35,15 @@
             <aside class="w-64 bg-white shadow-lg min-h-screen">
                 <nav class="mt-8">
                     <div class="px-4 space-y-2">
-                        <a href="{{ url_for('dashboard.admin_dashboard') }}" 
+                        <a href="{{ url_for('admin_dashboard_page') }}" 
                            class="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg">
                             <i class="fas fa-tachometer-alt mr-3"></i>仪表板
                         </a>
-                        <a href="{{ url_for('users.admin_users') }}" 
+                        <a href="{{ url_for('admin_users_page') }}" 
                            class="block px-4 py-2 bg-blue-50 text-blue-600 rounded-lg">
                             <i class="fas fa-users mr-3"></i>用户管理
                         </a>
-                        <a href="{{ url_for('news.admin_news') }}" 
+                        <a href="{{ url_for('admin_news_page') }}" 
                            class="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg">
                             <i class="fas fa-newspaper mr-3"></i>新闻管理
                         </a>
@@ -125,8 +125,35 @@
     <script>
         // 页面加载时获取用户数据
         document.addEventListener('DOMContentLoaded', function() {
+            loadUserInfo();
             loadUsers();
         });
+
+        // 加载用户信息
+        async function loadUserInfo() {
+            try {
+                const token = localStorage.getItem('admin_token');
+                if (!token) {
+                    window.location.href = '/admin/login';
+                    return;
+                }
+
+                const response = await fetch('/api/test-token', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('admin-username').textContent = data.username;
+                } else {
+                    window.location.href = '/admin/login';
+                }
+            } catch (error) {
+                window.location.href = '/admin/login';
+            }
+        }
 
         // 加载用户数据
         async function loadUsers() {
@@ -134,10 +161,20 @@
             const usersContainer = document.getElementById('users-container');
 
             try {
-                const response = await fetch('/api/admin/users');
+                const token = localStorage.getItem('admin_token');
+                if (!token) {
+                    window.location.href = '/admin/login';
+                    return;
+                }
+
+                const response = await fetch('/api/admin/users', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
                 const data = await response.json();
 
-                if (data.success) {
+                if (response.ok) {
                     // 更新用户列表
                     renderUsersList(data.users);
                     
@@ -148,7 +185,7 @@
                     loading.classList.add('hidden');
                     usersContainer.classList.remove('hidden');
                 } else {
-                    showMessage(data.message, 'error');
+                    showMessage(data.error || '加载用户数据失败', 'error');
                 }
             } catch (error) {
                 showMessage('加载用户数据失败', 'error');
@@ -206,7 +243,6 @@
             const adminCount = users.filter(user => user.is_admin).length;
             const normalCount = totalUsers - adminCount;
 
-            document.getElementById('user-count').textContent = totalUsers;
             document.getElementById('total-users').textContent = totalUsers;
             document.getElementById('admin-count').textContent = adminCount;
             document.getElementById('normal-count').textContent = normalCount;

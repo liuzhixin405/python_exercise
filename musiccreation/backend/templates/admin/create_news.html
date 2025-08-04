@@ -17,12 +17,17 @@
                         <h1 class="text-xl font-semibold text-gray-800">音乐新闻管理系统</h1>
                     </div>
                     <div class="flex items-center space-x-4">
-                        <span class="text-sm text-gray-600">欢迎，{{ session.admin_user.username }}</span>
-                        <a href="{{ url_for('auth.admin_logout') }}" class="text-sm text-red-600 hover:text-red-800">退出登录</a>
+                        <span class="text-sm text-gray-600">欢迎，<span id="admin-username">管理员</span></span>
+                        <a href="{{ url_for('admin_logout_page') }}" class="text-sm text-red-600 hover:text-red-800">退出登录</a>
                     </div>
                 </div>
             </div>
         </nav>
+
+        <!-- JavaScript消息提示容器 -->
+        <div id="message-container" class="hidden fixed top-4 right-4 z-50">
+            <div id="message-content" class="mb-4 p-4 rounded-lg"></div>
+        </div>
 
         <!-- 消息提示 -->
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -43,15 +48,15 @@
             <aside class="w-64 bg-white shadow-lg min-h-screen">
                 <nav class="mt-8">
                     <div class="px-4 space-y-2">
-                        <a href="{{ url_for('dashboard.admin_dashboard') }}" 
+                        <a href="{{ url_for('admin_dashboard_page') }}" 
                            class="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg">
                             <i class="fas fa-tachometer-alt mr-3"></i>仪表板
                         </a>
-                        <a href="{{ url_for('users.admin_users') }}" 
+                        <a href="{{ url_for('admin_users_page') }}" 
                            class="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg">
                             <i class="fas fa-users mr-3"></i>用户管理
                         </a>
-                        <a href="{{ url_for('news.admin_news') }}" 
+                        <a href="{{ url_for('admin_news_page') }}" 
                            class="block px-4 py-2 bg-blue-50 text-blue-600 rounded-lg">
                             <i class="fas fa-newspaper mr-3"></i>新闻管理
                         </a>
@@ -64,13 +69,13 @@
                 <div class="bg-white rounded-lg shadow-md p-6">
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="text-2xl font-bold text-gray-800">添加新闻</h2>
-                        <a href="{{ url_for('news.admin_news') }}" 
+                        <a href="{{ url_for('admin_news_page') }}" 
                            class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center">
                             <i class="fas fa-arrow-left mr-2"></i>返回列表
                         </a>
                     </div>
 
-                    <form method="POST" enctype="multipart/form-data" class="space-y-6">
+                    <form id="create-news-form" class="space-y-6">
                         <div>
                             <label for="title" class="block text-sm font-medium text-gray-700 mb-2">标题 *</label>
                             <input type="text" id="title" name="title" required
@@ -103,11 +108,11 @@
                         </div>
 
                         <div class="flex justify-end space-x-4">
-                            <a href="{{ url_for('news.admin_news') }}" 
+                            <a href="{{ url_for('admin_news_page') }}" 
                                class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
                                 取消
                             </a>
-                            <button type="submit" 
+                            <button type="button" onclick="submitNews()"
                                     class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 创建新闻
                             </button>
@@ -119,6 +124,128 @@
     </div>
 
     <script>
+        // 页面加载时获取用户信息
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUserInfo();
+        });
+
+        // 加载用户信息
+        async function loadUserInfo() {
+            try {
+                const token = localStorage.getItem('admin_token');
+                if (!token) {
+                    window.location.href = '/admin/login';
+                    return;
+                }
+
+                const response = await fetch('/api/test-token', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('admin-username').textContent = data.username;
+                } else {
+                    window.location.href = '/admin/login';
+                }
+            } catch (error) {
+                window.location.href = '/admin/login';
+            }
+        }
+
+        // 提交新闻
+        async function submitNews() {
+            const title = document.getElementById('title').value.trim();
+            const description = document.getElementById('description').value.trim();
+            const imageUrl = document.getElementById('image_url').value.trim();
+            const imageFile = document.getElementById('image').files[0];
+
+            // 验证输入
+            if (!title) {
+                showMessage('请输入新闻标题', 'error');
+                return;
+            }
+            if (!description) {
+                showMessage('请输入新闻描述', 'error');
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('admin_token');
+                if (!token) {
+                    window.location.href = '/admin/login';
+                    return;
+                }
+
+                // 如果有上传文件，先上传文件
+                let finalImageUrl = imageUrl;
+                if (imageFile) {
+                    const formData = new FormData();
+                    formData.append('image', imageFile);
+                    
+                    const uploadResponse = await fetch('/api/upload', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: formData
+                    });
+                    
+                    if (uploadResponse.ok) {
+                        const uploadData = await uploadResponse.json();
+                        finalImageUrl = uploadData.image_url;
+                    } else {
+                        showMessage('图片上传失败', 'error');
+                        return;
+                    }
+                }
+
+                // 创建新闻
+                const response = await fetch('/api/admin/news', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        title: title,
+                        description: description,
+                        image_url: finalImageUrl
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showMessage('新闻创建成功！', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/admin/news';
+                    }, 1500);
+                } else {
+                    showMessage(data.error || '创建新闻失败', 'error');
+                }
+            } catch (error) {
+                showMessage('创建新闻失败: ' + error.message, 'error');
+            }
+        }
+
+        // 显示消息
+        function showMessage(message, type) {
+            const messageContainer = document.getElementById('message-container');
+            const messageContent = document.getElementById('message-content');
+            
+            messageContent.textContent = message;
+            messageContent.className = `mb-4 p-4 rounded-lg ${type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`;
+            messageContainer.classList.remove('hidden');
+            
+            // 3秒后自动隐藏
+            setTimeout(() => {
+                messageContainer.classList.add('hidden');
+            }, 3000);
+        }
+
         // 实时显示字符计数
         document.getElementById('title').addEventListener('input', function() {
             const maxLength = 100;
