@@ -71,7 +71,6 @@ npm start
 - **后端API**: http://localhost:5000
 - **管理后台**: http://localhost:5001/admin
 
-> 📖 详细部署说明请参考 [QUICKSTART.md](QUICKSTART.md) 和 [deployment/README.md](deployment/README.md)
 
 ## 部署说明
 
